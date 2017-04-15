@@ -1,9 +1,12 @@
 # rpi-poweroff
 
-A microcontroller code that detects the Raspberry PI going to a power off, then cuts the power to the board.
-Used to control the Raspberry power consumption from an external source, like a battery.
+The RaspberyPI does not have a power button to turn it off from hardware.
 
-The pin is controlled through the `gpio-poweroff` overlay from the RaspberryPI firmware.
+This is a simple microcontroller based solution that resolves this.
+It enables to cut power off the Raspberry after a clean shutdown.
+
+A gpio is set HIGH while the PI is running, and it goes LOW after a software power off.
+It is controlled by the `gpio-poweroff` overlay from the RaspberryPI firmware.
 
 I used a Adafruit feather board, but many more variations should do the same work.
 
@@ -11,6 +14,8 @@ I used a Adafruit feather board, but many more variations should do the same wor
 
 Enable the overlay in config.txt with `dtoverlay=gpio-poweroff,gpiopin=16,active_low=y`.
 An alternative is to load it at run time with `sudo dtoverlay gpio-poweroff gpiopin=16 active_low=y`.
+
+The bash script `raspberry/rpi-poweroff` can be enabled through `/etc/rc.local` to automate it.
 
 ## Wiring
 
@@ -21,6 +26,8 @@ There are 3 connections needed. A powerup transistor, a detection pin, and the p
  * Connect a 4.5 KOhm resistor between BCM16 to 3.3v - guarantees a HIGH when power is applied.
  * Connect Pin 5 on the feather to a transistor base, then RPi 5V and GND to collector / emitter - use a resistor on the base
  * Connect Pin 13 from the feather to BCM17 on the Raspberry - this is a probe pin set to HIGH when controller available
+
+See more details in the `schematics` folder.
 
 ## Running
 

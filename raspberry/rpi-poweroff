@@ -1,0 +1,81 @@
+#!/bin/bash
+#
+# This script enables the gpio-poweroff Overlay on the RaspberryPI if the battery is detected.
+# The option "--dry-run" to simply tell if the battery is detected, but not load the overlay.
+#
+# This script should be run early during bootup, through /etc/rc.local or a systemd unit.
+#
+
+pin_poweroff=16
+pin_battery_detection=17
+dry_run=0
+
+
+#
+# detect_battery()
+#
+# Read the battery pin, return 1 if detected. The battery should set it HIGH all the time.
+#
+function detect_battery()
+{
+    if [ ! -f /sys/class/gpio/gpio$pin_battery_detection/direction ]; then
+	echo "$pin_battery_detection" > /sys/class/gpio/export
+	echo "in" > /sys/class/gpio/gpio$pin_battery_detection/direction
+    fi
+
+    if [ `cat /sys/class/gpio/gpio$pin_battery_detection/value` == "1" ]; then
+	return 1
+    else
+	return 0
+    fi
+}
+
+
+#
+# enable_poweroff()
+#
+# Load the gpio-poweroff firmware Overlay module for the current boot session,
+# in active low mode.
+#
+# You must cut power off the RPI within 3 seconds when this pin goes LOW.
+#
+function enable_poweroff()
+{
+    /usr/bin/dtoverlay -l | grep -c -q gpio-poweroff
+    if [ $? == 0 ]; then
+	echo "gpio-poweroff overlay is already loaded"
+	return 0
+    else
+	echo "Enabling gpio-poweroff overlay"
+	/usr/bin/dtoverlay gpio-poweroff gpiopin=$pin_poweroff active_low=y 2>/dev/null
+	/usr/bin/dtoverlay -l | grep gpio-poweroff
+	return $?
+    fi
+}
+
+
+# Permissions sanity check
+if [ `id -u` != 0 ]; then
+    echo "Error: you must be root to run this script, try with sudo"
+    exit 1
+fi
+
+
+# dry run mode will simply tell if the battery is detected
+if [ "$1" == "--dry-run" ]; then
+    dry_run=1
+fi
+
+
+# If battery is connected, enable the Poweroff firmware overlay
+detect_battery
+if [ $? == 1 ]; then
+    echo "Battery unit detected"
+    if [ $dry_run == 0 ]; then
+	enable_poweroff
+    fi
+    exit $?
+else
+    echo "battery not detected"
+    exit 1
+fi
